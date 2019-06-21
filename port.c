@@ -2644,28 +2644,28 @@ static enum fsm_event bc_event(struct port *p, int fd_index)
 	}
 
 	switch (msg_type(msg)) {
-	case SYNC:
+	case SYNC: // e2e
 		process_sync(p, msg);
 		break;
-	case DELAY_REQ:
+	case DELAY_REQ: // e2e
 		if (process_delay_req(p, msg))
 			event = EV_FAULT_DETECTED;
 		break;
-	case PDELAY_REQ:
+	case PDELAY_REQ: // p2p
 		if (process_pdelay_req(p, msg))
 			event = EV_FAULT_DETECTED;
 		break;
-	case PDELAY_RESP:
+	case PDELAY_RESP: // p2p
 		if (process_pdelay_resp(p, msg))
 			event = EV_FAULT_DETECTED;
 		break;
-	case FOLLOW_UP:
+	case FOLLOW_UP: // e2e
 		process_follow_up(p, msg);
 		break;
-	case DELAY_RESP:
+	case DELAY_RESP: // e2e
 		process_delay_resp(p, msg);
 		break;
-	case PDELAY_RESP_FOLLOW_UP:
+	case PDELAY_RESP_FOLLOW_UP: // p2p
 		process_pdelay_resp_fup(p, msg);
 		break;
 	case ANNOUNCE:
@@ -2925,6 +2925,7 @@ struct port *port_open(int phc_index,
 	}
 
 	memset(p, 0, sizeof(*p));
+    // tail Q init
 	TAILQ_INIT(&p->tc_transmitted);
 
 	switch (type) {
@@ -2949,6 +2950,7 @@ struct port *port_open(int phc_index,
 	p->jbod = config_get_int(cfg, interface->name, "boundary_clock_jbod");
 	transport = config_get_int(cfg, interface->name, "network_transport");
 	p->master_only = config_get_int(cfg, interface->name, "masterOnly");
+    // bmca = best master clock algo.
 	p->bmca = config_get_int(cfg, interface->name, "BMCA");
 
 	if (p->bmca == BMCA_NOOP && transport != TRANS_UDS) {

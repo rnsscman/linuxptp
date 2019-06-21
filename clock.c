@@ -44,6 +44,7 @@
 #include "uds.h"
 #include "util.h"
 
+// N_CLOCK_PFD = 12
 #define N_CLOCK_PFD (N_POLLFD + 1) /* one extra per port, for the fault timer */
 #define POW2_41 ((double)(1ULL << 41))
 
@@ -631,6 +632,26 @@ static void clock_update_grandmaster(struct clock *c)
 	c->tds.currentUtcOffset                 = c->utc_offset;
 	c->tds.flags                            = c->time_flags;
 	c->tds.timeSource                       = c->time_source;
+    /** printf("[%s:%s:%d] %s %d \n", __FILE__, __func__, __LINE__,
+      *     "pds->parentPortIdentity.clockIdentity", pds->parentPortIdentity.clockIdentity); */
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "pds->parentPortIdentity.portNumber", pds->parentPortIdentity.portNumber);
+    /** printf("[%s:%s:%d] %s %d \n", __FILE__, __func__, __LINE__,
+      *     "pds->grandmasterIdentity", pds->grandmasterIdentity); */
+    /** printf("[%s:%s:%d] %s %d \n", __FILE__, __func__, __LINE__,
+      *     "pds->grandmasterClockQuality", pds->grandmasterClockQuality); */
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "pds->grandmasterPriority1", pds->grandmasterPriority1);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "pds->grandmasterPriority2", pds->grandmasterPriority2);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "c->dad.path_length", c->dad.path_length);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "c->tds.currentUtcOffset", c->tds.currentUtcOffset);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "c->tds.flags", c->tds.flags);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "c->tds.timeSource", c->tds.timeSource);
 }
 
 static void clock_update_slave(struct clock *c)
@@ -866,13 +887,20 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	struct timespec ts;
 	int sfl;
 
+    // 현재 시간 정보를 변수 ts에 저장
 	clock_gettime(CLOCK_REALTIME, &ts);
+    // ? 
 	srandom(ts.tv_sec ^ ts.tv_nsec);
 
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "c->nports", c->nports);
 	if (c->nports) {
 		clock_destroy(c);
 	}
 
+    // 클럭 타입 설정
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "type", type);
 	switch (type) {
 	case CLOCK_TYPE_ORDINARY:
 	case CLOCK_TYPE_BOUNDARY:
@@ -885,43 +913,64 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 
 	/* Initialize the defaultDS. */
+    // ptp 파라미터 해싱
+    // dds = default data sets
 	c->dds.clockQuality.clockClass =
 		config_get_int(config, NULL, "clockClass");
 	c->dds.clockQuality.clockAccuracy =
 		config_get_int(config, NULL, "clockAccuracy");
 	c->dds.clockQuality.offsetScaledLogVariance =
 		config_get_int(config, NULL, "offsetScaledLogVariance");
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "clockClass", c->dds.clockQuality.clockClass);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "clockAccuracy", c->dds.clockQuality.clockAccuracy);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "offsetScaledLogVariance", c->dds.clockQuality.offsetScaledLogVariance);
 
 	c->desc.productDescription.max_symbols = 64;
 	c->desc.revisionData.max_symbols = 32;
 	c->desc.userDescription.max_symbols = 128;
 
+    // ptp 파라미터 해싱
 	tmp = config_get_string(config, NULL, "productDescription");
+    printf("[%s:%s:%d] %s = %s \n", __FILE__, __func__, __LINE__,
+        "productDescription", tmp);
 	if (count_char(tmp, ';') != 2 ||
 	    static_ptp_text_set(&c->desc.productDescription, tmp)) {
 		pr_err("invalid productDescription '%s'", tmp);
 		return NULL;
 	}
 	tmp = config_get_string(config, NULL, "revisionData");
+    printf("[%s:%s:%d] %s = %s \n", __FILE__, __func__, __LINE__,
+        "revisionData", tmp);
 	if (count_char(tmp, ';') != 2 ||
 	    static_ptp_text_set(&c->desc.revisionData, tmp)) {
 		pr_err("invalid revisionData '%s'", tmp);
 		return NULL;
 	}
 	tmp = config_get_string(config, NULL, "userDescription");
+    printf("[%s:%s:%d] %s = %s \n", __FILE__, __func__, __LINE__,
+        "userDescription", tmp);
 	if (static_ptp_text_set(&c->desc.userDescription, tmp)) {
 		pr_err("invalid userDescription '%s'", tmp);
 		return NULL;
 	}
 	tmp = config_get_string(config, NULL, "manufacturerIdentity");
+    printf("[%s:%s:%d] %s = %s \n", __FILE__, __func__, __LINE__,
+        "manufacturerIdentity", tmp);
 	if (OUI_LEN != sscanf(tmp, "%hhx:%hhx:%hhx", &oui[0], &oui[1], &oui[2])) {
 		pr_err("invalid manufacturerIdentity '%s'", tmp);
 		return NULL;
 	}
 	memcpy(c->desc.manufacturerIdentity, oui, OUI_LEN);
 
+    // ptp 파라미터 해싱
 	c->dds.domainNumber = config_get_int(config, NULL, "domainNumber");
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "domainNumber", c->dds.domainNumber);
 
+    // ptp 파라미터 해싱
 	if (config_get_int(config, NULL, "slaveOnly")) {
 		c->dds.flags |= DDS_SLAVE_ONLY;
 	}
@@ -930,6 +979,10 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		pr_err("Cannot mix 1588 slaveOnly with 802.1AS !gmCapable");
 		return NULL;
 	}
+
+    // ptp 파라미터 해싱
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "c->dds.flags", c->dds.flags);
 	if (!config_get_int(config, NULL, "gmCapable") ||
 	    c->dds.flags & DDS_SLAVE_ONLY) {
 		c->dds.clockQuality.clockClass = 255;
@@ -937,25 +990,40 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->default_dataset.localPriority =
 		config_get_int(config, NULL, "G.8275.defaultDS.localPriority");
 	c->max_steps_removed = config_get_int(config, NULL,"maxStepsRemoved");
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "G.8275.defaultDS.localPriority", c->default_dataset.localPriority);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "maxStepsRemoved", c->max_steps_removed);
 
 	/* Harmonize the twoStepFlag with the time_stamping option. */
 	if (config_harmonize_onestep(config)) {
 		return NULL;
 	}
+    // ptp 파라미터 해싱
 	if (config_get_int(config, NULL, "twoStepFlag")) {
 		c->dds.flags |= DDS_TWO_STEP_FLAG;
 	}
+
+    // ptp 파라미터 해싱
 	timestamping = config_get_int(config, NULL, "time_stamping");
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "time_stamping", timestamping);
 	if (timestamping == TS_SOFTWARE) {
 		sw_ts = 1;
 	} else {
 		sw_ts = 0;
 	}
 
+    // ptp 파라미터 해싱
 	c->dds.priority1 = config_get_int(config, NULL, "priority1");
 	c->dds.priority2 = config_get_int(config, NULL, "priority2");
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "priority1", c->dds.priority1);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "priority2", c->dds.priority2);
 
 	/* Check the time stamping mode on each interface. */
+    // 각 인터페이스의 타임스탬핑 모드 검사
 	c->timestamping = timestamping;
 	required_modes = clock_required_modes(c);
 	STAILQ_FOREACH(iface, &config->interfaces, list) {
@@ -973,6 +1041,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	iface = STAILQ_FIRST(&config->interfaces);
 
 	/* determine PHC Clock index */
+    // PHY 클럭 인덱스 설정
 	if (config_get_int(config, NULL, "free_running")) {
 		phc_index = -1;
 	} else if (timestamping == TS_SOFTWARE || timestamping == TS_LEGACY_HW) {
@@ -992,6 +1061,9 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		pr_info("selected /dev/ptp%d as PTP clock", phc_index);
 	}
 
+    // ptp 파라미터 해싱
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "phc_index", phc_index);
 	if (strcmp(config_get_string(config, NULL, "clockIdentity"),
 		   "000000.0000.000000") == 0) {
 		if (generate_clock_identity(&c->dds.clockIdentity,
@@ -1010,6 +1082,8 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	/* Configure the UDS. */
 	snprintf(udsif->name, sizeof(udsif->name), "%s",
 		 config_get_string(config, NULL, "uds_address"));
+    printf("[%s:%s:%d] %s = %s \n", __FILE__, __func__, __LINE__,
+        "udsif->name", udsif->name);
 	if (config_set_section_int(config, udsif->name,
 				   "announceReceiptTimeout", 0)) {
 		return NULL;
@@ -1026,6 +1100,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		return NULL;
 	}
 
+    // ptp 파라미터 해싱
 	c->config = config;
 	c->free_running = config_get_int(config, NULL, "free_running");
 	c->freq_est_interval = config_get_int(config, NULL, "freq_est_interval");
@@ -1033,7 +1108,20 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->kernel_leap = config_get_int(config, NULL, "kernel_leap");
 	c->utc_offset = config_get_int(config, NULL, "utc_offset");
 	c->time_source = config_get_int(config, NULL, "timeSource");
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "free_running", c->free_running);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "freq_est_interval", c->freq_est_interval);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "gmCapable", c->grand_master_capable);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "kernel_leap", c->kernel_leap);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "utc_offset", c->utc_offset);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "timeSource", c->time_source);
 
+    // ?
 	if (c->free_running) {
 		c->clkid = CLOCK_INVALID;
 		if (timestamping == TS_SOFTWARE || timestamping == TS_LEGACY_HW) {
@@ -1071,6 +1159,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->leap_set = 0;
 	c->time_flags = c->utc_timescale ? 0 : PTP_TIMESCALE;
 
+    // ?
 	if (c->clkid != CLOCK_INVALID) {
 		fadj = (int) clockadj_get_freq(c->clkid);
 		/* Due to a bug in older kernels, the reading may silently fail
@@ -1078,6 +1167,8 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		   the actual frequency of the clock. */
 		clockadj_set_freq(c->clkid, fadj);
 	}
+
+    // servo 조사 
 	c->servo = servo_create(c->config, servo, -fadj, max_adj, sw_ts);
 	if (!c->servo) {
 		pr_err("Failed to create clock servo");
@@ -1101,6 +1192,8 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	c->master_local_rr = 1.0;
 	c->nrr = 1.0;
 	c->stats_interval = config_get_int(config, NULL, "summary_interval");
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "summary_interval", c->stats_interval);
 	c->stats.offset = stats_create();
 	c->stats.freq = stats_create();
 	c->stats.delay = stats_create();
@@ -1109,6 +1202,8 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 		return NULL;
 	}
 	sfl = config_get_int(config, NULL, "sanity_freq_limit");
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "sanity_freq_limit", sfl);
 	if (sfl) {
 		c->sanity_check = clockcheck_create(sfl);
 		if (!c->sanity_check) {
@@ -1136,6 +1231,8 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 
 	/* Create the UDS interface. */
+    // uds = unix domain socket
+    // uds 포트?
 	c->uds_port = port_open(phc_index, timestamping, 0, udsif, c);
 	if (!c->uds_port) {
 		pr_err("failed to open the UDS port");
@@ -1144,6 +1241,7 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	clock_fda_changed(c);
 
 	/* Create the ports. */
+    // 클럭에 포트 추가, 포트는 마스터 또는 슬레이브
 	STAILQ_FOREACH(iface, &config->interfaces, list) {
 		if (clock_add_port(c, phc_index, timestamping, iface)) {
 			pr_err("failed to open port %s", iface->name);
@@ -1152,7 +1250,10 @@ struct clock *clock_create(enum clock_type type, struct config *config,
 	}
 
 	c->dds.numberPorts = c->nports;
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "c->dds.numberPorts", c->dds.numberPorts);
 
+    // port_dispatch 조사
 	LIST_FOREACH(p, &c->ports, list) {
 		port_dispatch(p, EV_INITIALIZE, 0);
 	}
@@ -1491,7 +1592,11 @@ int clock_poll(struct clock *c)
 	struct port *p;
 
 	clock_check_pollfd(c);
+    // poll() performs a similar task to select(2): it waits for one of a
+    // set of file descriptors to become ready to perform I/O.
 	cnt = poll(c->pollfd, (c->nports + 1) * N_CLOCK_PFD, -1);
+    // On success, a positive number is returned; this is the number of
+    // structures which have nonzero revents fields
 	if (cnt < 0) {
 		if (EINTR == errno) {
 			return 0;
@@ -1505,10 +1610,16 @@ int clock_poll(struct clock *c)
 
 	cur = c->pollfd;
 
+    // LIST_FOREACH(val, head, field)
+    // c->ports 리스트의 엔트리를 p에 대입하고 iteration
+    // OC의 포트 개수는 1개
+    // BC의 포트 개수는 2개 이상
 	LIST_FOREACH(p, &c->ports, list) {
 		/* Let the ports handle their events. */
 		for (i = 0; i < N_POLLFD; i++) {
+            // fd가 리턴받은 이벤트가 데이터 있음이면
 			if (cur[i].revents & (POLLIN|POLLPRI)) {
+                // port_event 조사
 				event = port_event(p, i);
 				if (EV_STATE_DECISION_EVENT == event) {
 					c->sde = 1;
@@ -1516,6 +1627,7 @@ int clock_poll(struct clock *c)
 				if (EV_ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES == event) {
 					c->sde = 1;
 				}
+                // port_dispatch 조사
 				port_dispatch(p, event, 0);
 				/* Clear any fault after a little while. */
 				if (PS_FAULTY == port_state(p)) {
@@ -1536,6 +1648,7 @@ int clock_poll(struct clock *c)
 			}
 		}
 
+        // pollfd의 다음 엔트리?
 		cur += N_CLOCK_PFD;
 	}
 
@@ -1553,6 +1666,7 @@ int clock_poll(struct clock *c)
 		handle_state_decision_event(c);
 		c->sde = 0;
 	}
+    // 아래 함수 조사
 	clock_prune_subscriptions(c);
 	return 0;
 }
@@ -1745,6 +1859,7 @@ static void handle_state_decision_event(struct clock *c)
 	struct port *piter;
 	int fresh_best = 0;
 
+    // BMCA?
 	LIST_FOREACH(piter, &c->ports, list) {
 		fc = port_compute_best(piter);
 		if (!fc)
@@ -1784,6 +1899,7 @@ static void handle_state_decision_event(struct clock *c)
 	LIST_FOREACH(piter, &c->ports, list) {
 		enum port_state ps;
 		enum fsm_event event;
+        // bmc_state_decision 조사
 		ps = bmc_state_decision(c, piter, c->dscmp);
 		switch (ps) {
 		case PS_LISTENING:

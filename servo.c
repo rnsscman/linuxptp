@@ -38,6 +38,7 @@ struct servo *servo_create(struct config *cfg, enum servo_type type,
 	int servo_max_frequency;
 	struct servo *servo;
 
+    // servo의 타입에 따른 차이는?
 	switch (type) {
 	case CLOCK_SERVO_PI:
 		servo = pi_servo_create(cfg, fadj, sw_ts);

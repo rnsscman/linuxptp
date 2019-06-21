@@ -41,10 +41,13 @@ static void usage(char *progname)
 	fprintf(stderr,
 		"\nusage: %s [options]\n\n"
 		" Delay Mechanism\n\n"
+        // 딜레이 매커니즘은 TC에 대한 내용으로 알고있음
+        // OC 또는 BC일 때 이에 대한 설정은?
 		" -A        Auto, starting with E2E\n"
 		" -E        E2E, delay request-response (default)\n"
 		" -P        P2P, peer delay mechanism\n\n"
 		" Network Transport\n\n"
+        // 선택 기준은?
 		" -2        IEEE 802.3\n"
 		" -4        UDP IPV4 (default)\n"
 		" -6        UDP IPV6\n\n"
@@ -56,6 +59,7 @@ static void usage(char *progname)
 		" -f [file] read configuration from 'file'\n"
 		" -i [dev]  interface device to use, for example 'eth0'\n"
 		"           (may be specified multiple times)\n"
+        // 해당 옵션에 대한 값은 /dev 디렉토리 아래에 있는 클럭 디바이스일 것으로 예상
 		" -p [dev]  Clock device to use, default auto\n"
 		"           (ignored for SOFTWARE/LEGACY HW time stamping)\n"
 		" -s        slave only mode (overrides configuration file)\n"
@@ -89,6 +93,9 @@ int main(int argc, char *argv[])
 	/* Process the command line arguments. */
 	progname = strrchr(argv[0], '/');
 	progname = progname ? 1+progname : argv[0];
+    printf("[%s:%s:%d] %s = %s \n", __FILE__, __func__, __LINE__,
+        "progname", progname);
+    // command 포함된 옵션을 통해 해쉬 테이블의 키와 값 추가
 	while (EOF != (c = getopt_long(argc, argv, "AEP246HSLf:i:p:sl:mqvh",
 				       opts, &index))) {
 		switch (c) {
@@ -177,6 +184,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
+    // config 파일을 지정했는데 그 파일이 유효하지 않으면 
 	if (config && (c = config_read(config, cfg))) {
 		return c;
 	}
@@ -187,11 +195,22 @@ int main(int argc, char *argv[])
 	print_set_syslog(config_get_int(cfg, NULL, "use_syslog"));
 	print_set_level(config_get_int(cfg, NULL, "logging_level"));
 
+    // 해싱
 	assume_two_step = config_get_int(cfg, NULL, "assume_two_step");
 	sk_check_fupsync = config_get_int(cfg, NULL, "check_fup_sync");
 	sk_tx_timeout = config_get_int(cfg, NULL, "tx_timestamp_timeout");
 	sk_hwts_filter_mode = config_get_int(cfg, NULL, "hwts_filter");
 
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "assume_two_step", assume_two_step);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "check_fup_sync", sk_check_fupsync);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "tx_timestamp_timeout", sk_tx_timeout);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "hwts_filter", sk_hwts_filter_mode);
+
+    // clock_servo는 어떻게 해쉬 테이블에 추가되는지?
 	if (config_get_int(cfg, NULL, "clock_servo") == CLOCK_SERVO_NTPSHM) {
 		config_set_int(cfg, "kernel_leap", 0);
 		config_set_int(cfg, "sanity_freq_limit", 0);
@@ -203,7 +222,16 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "clock_type", type);
+
+    // clock_type는 어떻게 해쉬 테이블에 추가되는지?
 	type = config_get_int(cfg, NULL, "clock_type");
+
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "clock_type", type);
+
+    // 타입에 따라 인터페이스 개수의 유효성 검사 
 	switch (type) {
 	case CLOCK_TYPE_ORDINARY:
 		if (cfg->n_interfaces > 1) {
@@ -240,6 +268,7 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+    // 사용자가 지정한 옵션을 갖는 클럭 생성
 	clock = clock_create(type, cfg, req_phc);
 	if (!clock) {
 		fprintf(stderr, "failed to create a clock\n");
@@ -248,7 +277,13 @@ int main(int argc, char *argv[])
 
 	err = 0;
 
+    // 전역변수 running은 시그널을 통해 0이 될 수 있다
+    // 전역변수 running을 0으로 만드는 시그널을 아래와 같다
+    // SIGINT   CTRL-C
+    // SIGQUIT  CTRL-역슬래시
+    // SIGTERM
 	while (is_running()) {
+        // 클럭에서 이벤트가 발생하는지 검사
 		if (clock_poll(clock))
 			break;
 	}

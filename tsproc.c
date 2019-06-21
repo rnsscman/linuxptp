@@ -63,6 +63,12 @@ static int weighting(struct tsproc *tsp)
 struct tsproc *tsproc_create(enum tsproc_mode mode,
 			     enum filter_type delay_filter, int filter_length)
 {
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "tsproc_mode", mode);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "delay_filter", delay_filter);
+    printf("[%s:%s:%d] %s = %d \n", __FILE__, __func__, __LINE__,
+        "delay_filter_length", filter_length);
 	struct tsproc *tsp;
 
 	tsp = calloc(1, sizeof(*tsp));
